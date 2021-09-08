@@ -1,0 +1,2 @@
+pybind11
+torch>=1.0.0
