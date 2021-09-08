@@ -17,7 +17,7 @@ python setup.py install
 
 * `gather.gathercat(x_padded:torch.FloatTensor, lx:torch.IntTensor)`
 
-    Return a concatence of given padded tensor `x_padded` and its lengths `lx` w.r.t. every sequence. 
+    Return a concatence of given padded tensor `x_padded` according to its lengths `lx`. 
 
     Input:
 
@@ -66,7 +66,7 @@ python setup.py install
 
 * `gather.gathersum(xs:torch.FloatTensor, ys:torch.FloatTensor, lx:torch.IntTensor, ly:torch.IntTensor)`
 
-    Return a sequence-matched broadcast sum of given paired **gathered** tensor `xs` and `ys`. For a paired sequences in `xs` and `ys`, say `xs_i` and `ys_i`, `gathersum()` broadcast them so that they can be added up. The broadcast step can be understood as `(xs_i.unsqueeze(1)+ys_i.unsqueeze(2)).reshape(-1, V)` with python and torch.
+    Return a sequence-matched broadcast sum of given paired **gathered** tensor `xs` and `ys`. For a pair of sequences in `xs` and `ys`, say `xs_i` and `ys_i`, `gathersum()` broadcast them so that they can be added up. The broadcast step can be understood as `(xs_i.unsqueeze(1)+ys_i.unsqueeze(2)).reshape(-1, V)` with python and torch.
 
     Input:
 
@@ -105,7 +105,7 @@ python setup.py install
     20
     ```
 
-    This function seems doing something weird
+    This function seems doing something weird. Please refer to the discussion page for a specific usage example.
 
 
 ## Reference
