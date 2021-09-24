@@ -15,9 +15,9 @@ python setup.py install
 
 **Note that all the input tensors should be on cuda device.**
 
-* `gather.gathercat(x_padded:torch.FloatTensor, lx:torch.IntTensor)`
+* `gather.cat(x_padded:torch.FloatTensor, lx:torch.IntTensor)`
 
-    Return a concatence of given padded tensor `x_padded` according to its lengths `lx`. 
+    Return a concatence of given padded tensor `x_padded` according to its lengths `lx`. Support mixed precision forward/backward.
 
     Input:
 
@@ -33,12 +33,12 @@ python setup.py install
 
     ```python
     >>> import torch
-    >>> from gather import gathercat
+    >>> import gather
     >>> lx = torch.randint(3, 20, (5, ), dtype=torch.int32, device='cuda')
     >>> x_padded = torch.randn((5, lx.max(), 64), device='cuda')
     >>> x_padded.size(), lx.size()
     (torch.Size([5, 19, 64]), torch.Size([5]))
-    >>> x_gather = gathercat(x_padded, lx)
+    >>> x_gather = gather.cat(x_padded, lx)
     >>> x_gather.size()
     torch.Size([81, 64])
     # another example, with V=1
@@ -54,7 +54,7 @@ python setup.py install
             [0.]]], device='cuda:0')
     >>> lx
     tensor([3, 2], device='cuda:0', dtype=torch.int32)
-    >>> gathercat(x_padded, lx)
+    >>> gather.cat(x_padded, lx)
     tensor([[1.],
             [2.],
             [3.],
@@ -62,11 +62,11 @@ python setup.py install
             [2.]], device='cuda:0')
     ```
 
-    This function is easy to implement with torch python functions like `torch.cat()`, however, `gathercat()` is *customized* for specified tasks, and more efficient.
+    This function is easy to implement with torch python functions like `torch.cat()`, however, `gather.cat()` is *customized* for specified tasks, and more efficient.
 
-* `gather.gathersum(xs:torch.FloatTensor, ys:torch.FloatTensor, lx:torch.IntTensor, ly:torch.IntTensor)`
+* `gather.sum(xs:torch.FloatTensor, ys:torch.FloatTensor, lx:torch.IntTensor, ly:torch.IntTensor)`
 
-    Return a sequence-matched broadcast sum of given paired **gathered** tensor `xs` and `ys`. For a pair of sequences in `xs` and `ys`, say `xs_i` and `ys_i`, `gathersum()` broadcast them so that they can be added up. The broadcast step can be understood as `(xs_i.unsqueeze(1)+ys_i.unsqueeze(2)).reshape(-1, V)` with python and torch.
+    Return a sequence-matched broadcast sum of given paired **gathered** tensor `xs` and `ys`. For a pair of sequences in `xs` and `ys`, say `xs_i` and `ys_i`, `gather.sum()` broadcast them so that they can be added up. The broadcast step can be understood as `(xs_i.unsqueeze(1)+ys_i.unsqueeze(2)).reshape(-1, V)` with python and torch.
 
     Input:
 
@@ -86,7 +86,7 @@ python setup.py install
 
     ```python
     >>> import torch
-    >>> from gather import gathersum
+    >>> import gather
     >>> N, T, U, V = 5, 4, 4, 3
     >>> lx = torch.randint(1, T, (N, ), dtype=torch.int32, device='cuda')
     >>> ly = torch.randint(1, U, (N, ), dtype=torch.int32, device='cuda')
@@ -94,7 +94,7 @@ python setup.py install
     >>> ys = torch.randn((ly.sum(), V), device='cuda')
     >>> xs.size(), ys.size(), lx.size(), ly.size()
     (torch.Size([11, 3]), torch.Size([10, 3]), torch.Size([5]), torch.Size([5]))
-    >>> gathered_sum = gathersum(xs, ys, lx, ly)
+    >>> gathered_sum = gather.sum(xs, ys, lx, ly)
     >>> gathered_sum.size()
     torch.Size([20, 3])
     # let's see how the size 20 comes out

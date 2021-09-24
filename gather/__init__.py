@@ -25,6 +25,7 @@ class _GatherSum(torch.autograd.Function):
 class _GatherCat(torch.autograd.Function):
 
     @staticmethod
+    @torch.cuda.amp.custom_fwd
     def forward(ctx, xs: torch.FloatTensor, lx: torch.IntTensor):
         x_gather = core.gather_cat_forward(xs, lx)
         ctx.nstride, ctx.tstride = xs.stride()[:-1]
@@ -32,6 +33,7 @@ class _GatherCat(torch.autograd.Function):
         return x_gather
 
     @staticmethod
+    @torch.cuda.amp.custom_bwd
     def backward(ctx, grad_gather):
 
         lx, = ctx.saved_tensors
@@ -40,7 +42,7 @@ class _GatherCat(torch.autograd.Function):
         return grad_padded, None
 
 
-def gathersum(xs: torch.Tensor, ys: torch.Tensor, lx: torch.Tensor, ly: torch.Tensor) -> torch.Tensor:
+def sum(xs: torch.Tensor, ys: torch.Tensor, lx: torch.Tensor, ly: torch.Tensor) -> torch.Tensor:
     """ Sum the two 'gathered' tensors xs and ys.
 
     Args:
@@ -55,7 +57,7 @@ def gathersum(xs: torch.Tensor, ys: torch.Tensor, lx: torch.Tensor, ly: torch.Te
     return _GatherSum.apply(xs, ys, lx.to(device=xs.device, dtype=torch.int32), ly.to(device=xs.device, dtype=torch.int32))
 
 
-def gathercat(xs: torch.Tensor, lx: torch.Tensor) -> torch.Tensor:
+def cat(xs: torch.Tensor, lx: torch.Tensor) -> torch.Tensor:
     """Cat the padded xs via lengths lx
 
     Args:

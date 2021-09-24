@@ -1,6 +1,6 @@
 
 from gather._C import gather_sum_forward, gather_sum_backward
-from gather import gathersum
+from gather import sum as gathersum
 import torch
 import time
 

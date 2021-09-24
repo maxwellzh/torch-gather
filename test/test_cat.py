@@ -1,6 +1,6 @@
 
 from gather._C import gather_cat_forward, gather_cat_backward
-from gather import gathercat
+from gather import cat as gathercat
 import torch
 import time
 
@@ -90,6 +90,33 @@ def test(seed: int):
         gather_x = gathercat(xs, lx)
         print("Wow! It works with non contiguous layout!")
 
+    def test_fp16(xs:torch.Tensor):
+        # xs_half = xs.to(dtype=torch.float16)
+        xs_half = xs
+        with torch.cuda.amp.autocast():
+            gathered_x = gathercat(xs_half, lx)
+            manual_x = manual_cat(xs_half, lx)
+
+            gathered_x.sum().backward()
+            g_grad = xs.grad
+            xs.grad = None
+
+            manual_x.sum().backward()
+            m_grad = xs.grad
+            xs.grad = None
+
+        if torch.all(g_grad == m_grad):
+            print("FP16 backward correct.")
+        else:
+            print(":( FP16 backward error.")
+
+        if torch.all(gathered_x == manual_x):
+            print("Wow! It works with FP16!")
+        else:
+            print(gathered_x)
+            print(manual_x)
+        pass
+
     def test_performance():
         with torch.no_grad():
             gather_x = gathercat(xs, lx)
@@ -117,6 +144,7 @@ def test(seed: int):
     test_forward()
     # test_autogradcheck()
     test_contiguous(xs)
+    test_fp16(xs)
     test_performance()
 
     print('')
@@ -124,5 +152,5 @@ def test(seed: int):
 
 if __name__ == "__main__":
 
-    for i in range(1):
+    for i in range(5):
         test(i)

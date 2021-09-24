@@ -162,7 +162,6 @@ torch::Tensor gather_cat_forward(
     // CHECK_CONTIGUOUS(x_padded);      // contiguous is no longer required
     CHECK_CONTIGUOUS(lx);
     // Check types
-    CHECK_FLOAT(x_padded);
     CHECK_INT(lx);
     // Check device
     CHECK_CUDA(x_padded);
@@ -174,12 +173,34 @@ torch::Tensor gather_cat_forward(
 
     const auto N = x_padded.size(0);
     const auto T = x_padded.size(1);
-    const auto V = x_padded.size(2);
+    const auto device = x_padded.device();
+    auto V = x_padded.size(2);
 
     auto memPref = lx.cumsum(0, at::ScalarType::Int);
 
     int64_t NT = memPref[-1].item<int64_t>();
 
+    // initialize at cuda kernel
+    torch::Tensor x_gather = torch::empty({NT, V}, torch::dtype(x_padded.scalar_type()).device(device));
+
+    /* aligned to 16 bits */
+    auto N_stride = x_padded.stride(0);
+    auto T_stride = x_padded.stride(1);
+    switch (x_padded.scalar_type())
+    {
+    case torch::kFloat32:
+        V *= 2;
+        N_stride *= 2;
+        T_stride *= 2;
+        break;
+    case torch::kFloat64:
+        V *= 4;
+        N_stride *= 4;
+        T_stride *= 4;
+        break;
+    default:
+        break;
+    }
     // set begin of memory location of each sequence
     {
         auto cumsumMemPref = memPref.index({Slice(0, -1, None)}) * V;
@@ -187,16 +208,12 @@ torch::Tensor gather_cat_forward(
     }
     memPref[0] = 0;
 
-    const auto device = x_padded.device();
     auto stream = c10::cuda::getCurrentCUDAStream(device.index());
     gatherStatus_t status;
 
-    // initialize at cuda kernel
-    torch::Tensor x_gather = torch::empty({NT, V}, torch::dtype(torch::kFloat32).device(device));
-
-    status = run_gather_cat(stream, x_padded.data_ptr<float>(), (unsigned int *)lx.data_ptr<int>(),
-                            x_gather.data_ptr<float>(), (unsigned int *)memPref.data_ptr<int>(),
-                            x_padded.stride(0), x_padded.stride(1), N, T, V);
+    status = run_gather_cat(stream, (const ushort *)x_padded.data_ptr(), (unsigned int *)lx.data_ptr<int>(),
+                            (ushort *)x_gather.data_ptr(), (unsigned int *)memPref.data_ptr<int>(),
+                            N_stride, T_stride, N, T, V);
 
     TORCH_CHECK(status == GATHER_STATUS_SUCCESS, "gather cat status " + std::to_string(status));
 
@@ -205,12 +222,11 @@ torch::Tensor gather_cat_forward(
 
 torch::Tensor gather_cat_backward(
     const torch::Tensor &grad_gather, const torch::Tensor &lx,
-    const long &N_stride, const long &T_stride)
+    long &N_stride, long &T_stride)
 {
     CHECK_CONTIGUOUS(grad_gather);
     CHECK_CONTIGUOUS(lx);
     // Check types
-    CHECK_FLOAT(grad_gather);
     CHECK_INT(lx);
     // Check device
     CHECK_CUDA(grad_gather);
@@ -220,7 +236,26 @@ torch::Tensor gather_cat_backward(
 
     const auto N = lx.size(0);
     const auto T = lx.max().item<int64_t>();
-    const auto V = grad_gather.size(1);
+    const auto device = grad_gather.device();
+    auto V = grad_gather.size(1);
+    torch::Tensor grad_padded = torch::zeros({N, T, V}, torch::dtype(grad_gather.scalar_type()).device(device));
+
+    /* aligned to 16 bits */
+    switch (grad_gather.scalar_type())
+    {
+    case torch::kFloat32:
+        V *= 2;
+        N_stride *= 2;
+        T_stride *= 2;
+        break;
+    case torch::kFloat64:
+        V *= 4;
+        N_stride *= 4;
+        T_stride *= 4;
+        break;
+    default:
+        break;
+    }
 
     auto memPref = lx.cumsum(0, at::ScalarType::Int);
     {
@@ -229,14 +264,11 @@ torch::Tensor gather_cat_backward(
     }
     memPref[0] = 0;
 
-    const auto device = grad_gather.device();
     auto stream = c10::cuda::getCurrentCUDAStream(device.index());
     gatherStatus_t status;
 
-    torch::Tensor grad_padded = torch::zeros({N, T, V}, torch::dtype(torch::kFloat32).device(device));
-
-    status = run_pad_grad(stream, grad_gather.data_ptr<float>(), (unsigned int *)lx.data_ptr<int>(),
-                          grad_padded.data_ptr<float>(), (unsigned int *)memPref.data_ptr<int>(),
+    status = run_pad_grad(stream, (const ushort *)grad_gather.data_ptr(), (unsigned int *)lx.data_ptr<int>(),
+                          (ushort *)grad_padded.data_ptr(), (unsigned int *)memPref.data_ptr<int>(),
                           N_stride, T_stride, N, T, V);
 
     TORCH_CHECK(status == GATHER_STATUS_SUCCESS, "gather cat backward status " + std::to_string(status));
