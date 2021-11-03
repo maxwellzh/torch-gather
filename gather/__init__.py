@@ -68,4 +68,4 @@ def cat(xs: torch.Tensor, lx: torch.Tensor) -> torch.Tensor:
         x_gather (torch.FloatTensor): size (lx0+lx1+..., V)
     """
     assert xs.size(0) == lx.size(0)
-    return _GatherCat.apply(xs, lx.to(device=xs.device, dtype=torch.int32))
+    return _GatherCat.apply(xs.contiguous(), lx.to(device=xs.device, dtype=torch.int32))
