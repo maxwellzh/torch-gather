@@ -67,5 +67,6 @@ def cat(xs: torch.Tensor, lx: torch.Tensor) -> torch.Tensor:
     Return:
         x_gather (torch.FloatTensor): size (lx0+lx1+..., V)
     """
+    assert xs.dtype in [torch.float, torch.float16, torch.float64], f"expect xs to be torch.float type, instead of {xs.dtype}"
     assert xs.size(0) == lx.size(0)
     return _GatherCat.apply(xs.contiguous(), lx.to(device=xs.device, dtype=torch.int32))
