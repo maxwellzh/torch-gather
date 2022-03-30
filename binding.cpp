@@ -1,8 +1,7 @@
 #include <tuple>
 #include <string>
 
-#include <THC/THC.h>
-
+#include <c10/cuda/CUDAStream.h>
 #include <torch/types.h>
 #include <torch/extension.h>
 
