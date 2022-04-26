@@ -21,45 +21,36 @@ python setup.py install
 
     Input:
 
-    **x_padded (`torch.float`):** padded tensor of size `(N, L, V)`, where `L=max(lx)`. 
+    **x_padded (`torch.float16|32|64 / torch.int16|32|64`):** padded tensor of size `(N, L, V)` or `(N, L)`, where `L=max(lx)`. 
 
-    **lx (`torch.int`):** lengths of size `(N, )`.
+    **lx (`torch.int32`):** lengths of size `(N, )`.
 
     Return:
 
-    **x_gather (`torch.float`):** the gathered tensor without paddings of size `(lx[0]+lx[1]+...+lx[N-1], V)`
+    **x_gather (dtype the same as `x_padded`):** the gathered tensor without paddings of size `(lx[0]+lx[1]+...+lx[N-1], V)` or `(lx[0]+lx[1]+...+lx[N-1], V)` depending on shape of `x_padded`.
 
     Example:
 
     ```python
     >>> import torch
     >>> import gather
-    >>> lx = torch.randint(3, 20, (5, ), dtype=torch.int32, device='cuda')
+    >>> lx = torch.randint(3, 20, (5, ), dtype=torch.int32)
     >>> x_padded = torch.randn((5, lx.max(), 64), device='cuda')
     >>> x_padded.size(), lx.size()
     (torch.Size([5, 19, 64]), torch.Size([5]))
     >>> x_gather = gather.cat(x_padded, lx)
     >>> x_gather.size()
     torch.Size([81, 64])
-    # another example, with V=1
-    >>> x_padded = torch.tensor([[1., 2., 3.],[1.,2.,0.]], device='cuda').unsqueeze(2)
-    >>> lx = torch.tensor([3,2], dtype=torch.int32, device='cuda')
+    # another example, with dim = 2 and dtype=torch.int64
+    >>> x_padded = torch.tensor([[1, 2, 3],[1, 2, 0]], device='cuda')
+    >>> lx = torch.tensor([3, 2], dtype=torch.int32)
     >>> x_padded
-    tensor([[[1.],
-            [2.],
-            [3.]],
-
-            [[1.],
-            [2.],
-            [0.]]], device='cuda:0')
+    tensor([[1, 2, 3],
+            [1, 2, 0]], device='cuda:0')
     >>> lx
-    tensor([3, 2], device='cuda:0', dtype=torch.int32)
+    tensor([3, 2], dtype=torch.int32)
     >>> gather.cat(x_padded, lx)
-    tensor([[1.],
-            [2.],
-            [3.],
-            [1.],
-            [2.]], device='cuda:0')
+    tensor([1, 2, 3, 1, 2], device='cuda:0')
     ```
 
     This function is easy to implement with torch python functions like `torch.cat()`, however, `gather.cat()` is *customized* for specified tasks, and more efficient.

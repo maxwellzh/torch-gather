@@ -27,7 +27,7 @@ long_description = get_long_description()
 
 setup(
     name="gather",
-    version="0.2.2",
+    version="0.2.3",
     description="PyTorch bindings for CUDA Gather",
     long_description=long_description,
     long_description_content_type="text/markdown",
